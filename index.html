@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Realtime Rummy</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  
+  <!-- Firebase SDKs Compat for file:// protocol -->
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-database-compat.js"></script>
+  
+  <script src="game.js" defer></script>
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1>🃏 Realtime Rummy</h1>
+      <p class="subtitle" id="connection-status">Connecting to Lobby...</p>
+    </header>
+
+    <main>
+      <!-- Lobby / Room Selection -->
+      <section id="lobby-section" class="glass-panel">
+        <h2>Multiplayer Lobby</h2>
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+          <button id="btn-create-room" class="btn-primary full-width">Create New Room</button>
+        </div>
+        <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 1.5rem 0;" />
+        <div style="display: flex; gap: 0.5rem;">
+          <input type="text" id="input-room-code" placeholder="ROOM CODE (e.g. A1B2)" style="flex: 2; text-transform: uppercase;" />
+          <button id="btn-join-room" class="btn-outline flex-1">Join Game</button>
+        </div>
+      </section>
+
+      <!-- Game Room -->
+      <section id="game-section" class="glass-panel hidden">
+        <h2 id="room-code-display" style="text-align: center; color: var(--primary);">Room: ----</h2>
+        
+        <div style="margin: 1.5rem 0;">
+          <h3 style="margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;">Players in Lobby</h3>
+          <div id="players-list">
+             <!-- active players injected here via Firebase -->
+          </div>
+        </div>
+
+        <div style="margin-top: 2rem;">
+          <button id="btn-start-game" class="btn-success full-width hidden">Host: Start Match</button>
+          <button id="btn-leave-room" class="btn-danger btn-outline full-width" style="margin-top:0.5rem;">Leave Room</button>
+        </div>
+      </section>
+
+      <!-- Play Board -->
+      <section id="play-board-section" class="glass-panel hidden" style="padding: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
+          <div id="opponents-area" style="display:flex; flex-direction:column; gap: 0.5rem; font-size:0.9rem;">
+            <!-- Opponents -->
+          </div>
+          <div>
+            <button class="btn-danger btn-outline" style="padding:0.25rem 0.5rem;" onclick="document.getElementById('btn-leave-room').click()">Quit</button>
+          </div>
+        </div>
+        
+        <!-- The Table Center -->
+        <div id="table-center" style="display:flex; justify-content:center; align-items:center; gap: 2rem; margin-bottom: 3rem;">
+          
+          <!-- Wild Joker Display -->
+          <div style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; opacity: 0.8;">
+            <div style="font-size:0.75rem; color:var(--warning); text-transform:uppercase; letter-spacing:1px; font-weight:bold;">Wild Joker</div>
+            <div id="wild-joker-display"></div>
+          </div>
+
+          <!-- Closed Deck -->
+          <div id="closed-deck" style="width: 80px; height: 120px; background: repeating-linear-gradient(45deg, var(--primary), var(--primary) 10px, #4c1d95 10px, #4c1d95 20px); border-radius: 8px; border: 2px solid rgba(255,255,255,0.2); cursor: pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; font-weight:bold; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+            <div>Draw</div>
+            <div id="closed-deck-count" style="font-size:0.75rem; color:rgba(255,255,255,0.7); font-weight:normal;">--</div>
+          </div>
+          
+          <!-- Muck Pile Display -->
+          <div id="muck-pile" style="width: 80px; height: 120px; background: rgba(0,0,0,0.5); border-radius: 8px; border: 2px dashed rgba(255,255,255,0.1); display:flex; flex-direction:column; align-items:center; justify-content:center; color:rgba(255,255,255,0.3); font-weight:bold; box-shadow: inset 0 4px 10px rgba(0,0,0,0.5);">
+            <div style="font-size:0.75rem; text-transform:uppercase;">Muck</div>
+            <div id="muck-pile-count" style="font-size:0.75rem; font-weight:normal;">0</div>
+          </div>
+          
+          <!-- Open Deck Discard wrapper -->
+          <div style="display:flex; flex-direction:column; align-items:center; gap:0.5rem;">
+            <div id="open-deck" class="dropzone" style="width: 80px; height: 120px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 2px dashed var(--text-muted); display:flex; align-items:center; justify-content:center; position: relative;">
+              <!-- Top open card goes here -->
+            </div>
+            <div style="font-size:0.8rem; color:var(--primary); cursor:pointer; font-weight:bold; background:rgba(255,255,255,0.05); padding: 0.2rem 0.5rem; border-radius:4px;" onclick="viewDiscardPile()">🔍 View Pile</div>
+          </div>
+          
+
+          <!-- Finish Slot for Declaring Rummy -->
+          <div id="finish-slot" class="dropzone" style="width: 80px; height: 120px; background: rgba(56,189,248,0.1); border-radius: 8px; border: 2px dashed var(--primary); display:flex; align-items:center; justify-content:center; color: var(--primary); font-weight: bold; text-align:center; padding:0.5rem; box-shadow: 0 0 10px rgba(56,189,248,0.1); line-height:1.2; font-size:0.9rem;">
+            Drop to<br/>Declare
+          </div>
+          
+        </div>
+
+        <div style="text-align:center; margin-bottom:1rem; min-height:1.5rem; color:var(--warning); font-weight:bold;" id="turn-indicator">
+          Waiting...
+        </div>
+
+        <!-- Player Hand Area -->
+        <div id="my-hand-area" style="background: rgba(0,0,0,0.3); border-radius: 12px; padding: 1rem; min-height: 200px; border: 1px solid var(--panel-border);">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; align-items:center;">
+            <h3 style="color: var(--primary); margin:0;">Your Hand</h3>
+            <div id="hand-action-buttons" style="display:flex; gap: 0.5rem;">
+              <button class="btn-danger btn-outline" style="padding:0.25rem 0.5rem; border: none; opacity:0.8;" id="btn-drop">Fold Hand</button>
+              <button class="btn-outline" style="padding:0.25rem 0.5rem;" onclick="addGroup()">+ Group</button>
+            </div>
+          </div>
+          
+          <div id="meld-groups" style="display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem;">
+            <!-- Groups will render here dynamically -->
+          </div>
+        </div>
+        
+        <!-- Live Standings Mini-Scoreboard -->
+        <div id="mini-scoreboard-area"></div>
+      </section>
+      
+      <!-- Voting Modal -->
+      <div id="voting-modal" class="hidden glass-panel" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.95); z-index:9999; display:flex; flex-direction:column; align-items:center; padding: 2rem; overflow-y:auto; border-radius:0;">
+        <h1 style="color:var(--primary); margin-bottom: 0.5rem;" id="voting-title">Someone declared Rummy!</h1>
+        <p style="color:var(--text-muted); margin-bottom: 2rem;">Please review their hand to confirm if it is a valid Rummy.</p>
+        
+        <div style="display:flex; gap: 2rem; align-items:center;">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:0.5rem;">
+            <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase;">Finish Card</div>
+            <div id="voting-finish-card"></div>
+          </div>
+          <div id="voting-hand-display" style="display:flex; gap: 2rem; flex-wrap:wrap; justify-content:center; margin-bottom: 3rem; transform: scale(0.9);">
+             <!-- dynamically render the declared hand here, grouped -->
+          </div>
+        </div>
+        
+        <div id="voting-actions" style="display:flex; gap: 1rem;">
+          <button id="btn-vote-valid" class="btn-success">✅ Valid Rummy</button>
+          <button id="btn-vote-invalid" class="btn-danger btn-outline">❌ Invalid! (80pt Penalty)</button>
+        </div>
+        
+        <div id="voting-status" style="margin-top: 1.5rem; color: #fff; font-size: 1.2rem;">
+          Opponent Votes: <span style="color:var(--success)" id="vote-valid-count">0</span> Valid / <span style="color:var(--danger)" id="vote-invalid-count">0</span> Invalid
+        </div>
+      </div>
+      
+      <!-- Post-Game Showdown Section -->
+      <section id="showdown-section" class="hidden" style="width: 100%; max-width: 1200px; padding: 1rem;">
+        <div class="glass-panel">
+          <h1 style="color:var(--primary); margin-top:0;">The Social Showdown</h1>
+          <p style="color:var(--text-muted); font-size:1.1rem;">Winner's hand is locked at 0 points. Submit the unmelded dead-weight points for your hand below. <strong style="color:#fff;">Anyone can overwrite a sleeping player's score!</strong></p>
+          
+          <div id="showdown-players-container" style="display:flex; flex-direction:column; gap: 1rem; margin-top:2rem;">
+            <!-- Player Showdown Rows -->
+          </div>
+          
+          <div id="showdown-dealer-controls" style="margin-top: 2rem; display:flex; justify-content:flex-end;">
+            <button id="btn-finalize-scores" class="btn-primary hidden">Submit Scoreboard (Dealer Only)</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Master Scoreboard Section -->
+      <section id="scoreboard-section" class="hidden" style="width: 100%; max-width: 800px; padding: 1rem; margin: 0 auto;">
+        <div class="glass-panel" style="text-align: center;">
+          <h1 style="color:var(--primary); margin-top:0;">Master Scorecard</h1>
+          
+          <div id="master-scoreboard-container" style="overflow-x: auto;">
+              <!-- Dynamic Javascript Grid injects here -->
+          </div>
+          
+          <div id="scoreboard-host-controls" style="margin-top: 3rem;">
+            <button id="btn-next-round" class="btn-success hidden" style="font-size:1.2rem; min-width:200px;">Deal Next Round</button>
+          </div>
+        </div>
+      </section>
+      
+    </main>
+    
+    <!-- Discard Pile Modal -->
+    <div id="discard-modal" class="hidden" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index: 1000; display:flex; align-items:center; justify-content:center;">
+      <div style="background:var(--panel-bg); padding:2rem; border-radius:12px; max-width:800px; width:90%; position:relative; max-height:80vh; overflow-y:auto; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 40px rgba(0,0,0,0.8);">
+         <button class="btn-outline" style="position:absolute; top:1rem; right:1rem;" onclick="document.getElementById('discard-modal').classList.add('hidden')">Close</button>
+         <h2 style="margin-top:0; color:var(--primary);">Open Discard Pile History</h2>
+         <p style="color:var(--text-muted); font-size:0.95rem;">Cards are shown in the exact order they were discarded. The last card shown is currently face-up on the table.</p>
+         <div id="discard-pile-display" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:1rem; transform:scale(0.9); transform-origin:top left;"></div>
+      </div>
+    </div>
+    
+  </div>
+</body>
+</html>

@@ -1,0 +1,313 @@
+:root {
+  --bg-color-from: #09090b;
+  --bg-color-to: #18181b;
+  --panel-bg: rgba(255, 255, 255, 0.04);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  
+  --primary: #8b5cf6;
+  --primary-hover: #7c3aed;
+  --success: #10b981;
+  --success-hover: #059669;
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+
+  --out-color: rgba(239, 68, 68, 0.2);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: radial-gradient(circle at top left, var(--bg-color-to), var(--bg-color-from));
+  color: var(--text-main);
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.app-container {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+header {
+  text-align: center;
+}
+
+header h1 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 3rem;
+  background: -webkit-linear-gradient(45deg, #a78bfa, #ec4899);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+}
+
+.glass-panel {
+  background: var(--panel-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Setup Styles */
+.add-player-form {
+  display: flex;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+input[type="text"], input[type="number"] {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  color: white;
+  font-size: 1rem;
+  outline: none;
+  flex: 1;
+  transition: border-color 0.2s;
+}
+
+input[type="text"]:focus, input[type="number"]:focus {
+  border-color: var(--primary);
+}
+
+button {
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Inter', sans-serif;
+  color: white;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary { background: var(--primary); }
+.btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+
+.btn-success { background: var(--success); }
+.btn-success:hover:not(:disabled) { background: var(--success-hover); }
+
+.btn-danger { background: var(--danger); }
+.btn-danger:hover:not(:disabled) { background: var(--danger-hover); }
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--panel-border);
+}
+.btn-outline:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.full-width {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+#player-list {
+  list-style: none;
+  margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+#player-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.15);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+}
+
+/* Table Styles */
+.table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 2rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+}
+
+th, td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+th {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+}
+
+tfoot th {
+  font-size: 1.1rem;
+  color: white;
+  border-bottom: none;
+  padding-top: 1rem;
+}
+
+.td-out {
+  color: var(--danger);
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.th-out {
+  color: var(--danger);
+  text-decoration: line-through;
+}
+
+.th-highlight {
+  color: var(--success);
+}
+
+/* Input Form Styles */
+#round-input-panel h2 {
+  font-family: 'Outfit', sans-serif;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.player-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.2);
+  margin-bottom: 1rem;
+}
+
+.player-input-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.score-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.score-buttons button {
+  flex: 1;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  min-width: 80px;
+}
+
+.score-buttons button.selected {
+  outline: 2px solid white;
+  outline-offset: -2px;
+  box-shadow: 0 0 10px rgba(255,255,255,0.3);
+}
+
+.custom-input {
+  width: 80px !important;
+  text-align: center;
+  padding: 0.5rem !important;
+  font-size: 0.9rem !important;
+}
+
+/* Announcement Banner */
+#announcement-banner {
+  margin-bottom: 2rem;
+  background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(236,72,153,0.2));
+  border: 1px solid rgba(236,72,153,0.3);
+  display: flex;
+  align-items: center;
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.avatar-img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 15px rgba(236,72,153,0.5);
+  border: 2px solid rgba(255,255,255,0.2);
+}
+
+.banner-text h3 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.4rem;
+  margin-bottom: 0.25rem;
+}
+
+.banner-text p {
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.banner-animate {
+  animation: slideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes slideIn {
+  0% { opacity: 0; transform: translateY(-20px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.player-out-row {
+  opacity: 0.7;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--out-color);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
