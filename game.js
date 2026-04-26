@@ -383,10 +383,10 @@ function renderPlayBoard(data) {
   const pData = data.players[turnPlayerId];
   if (!pData || pData.hasQuit || pData.isEliminated || (pData.disconnectedAt && (Date.now() - pData.disconnectedAt > 30000))) {
     if (data.host === myPlayerId) {
-      db.ref(`rooms/${currentRoom}`).update({
-         turnIndex: getNextValidTurnIndex(data, data.turnIndex),
-         [`players/${turnPlayerId}/hasQuit`]: true
-      });
+      if (!window.__isFoldingTarget || window.__isFoldingTarget !== turnPlayerId) {
+         window.__isFoldingTarget = turnPlayerId;
+         forceFoldPlayer(turnPlayerId, true).then(() => window.__isFoldingTarget = null);
+      }
     }
     return; // Wait for the skip update
   }
@@ -712,20 +712,30 @@ window.viewDiscardPile = async function() {
   document.getElementById('discard-modal').classList.remove('hidden');
 }
 
-window.forceFoldPlayer = async function(targetPId) {
+window.forceFoldPlayer = async function(targetPId, autoKick = false) {
   if (!currentRoom) return;
   const snap = await db.ref(`rooms/${currentRoom}`).get();
   const data = snap.val();
   
-  if (data.host !== myPlayerId) return alert("Only the host can force fold an AFK player.");
-  if (!confirm(`Are you sure you want to forcefully fold ${data.players[targetPId].name}'s hand? They will immediately take the Drop Penalty.`)) return;
-  
-  const targetHand = data.hands && data.hands[targetPId] ? data.hands[targetPId] : [];
-  if (targetHand.length === 14) {
-      return alert("You cannot force fold a player after they have drawn a card. They must discard.");
+  if (data.host !== myPlayerId) {
+      if(!autoKick) alert("Only the host can force fold an AFK player.");
+      return;
   }
   
+  if (!autoKick && !confirm(`Are you sure you want to forcefully fold ${data.players[targetPId].name}'s hand? They will immediately take the Drop Penalty.`)) return;
+  
+  const targetHand = data.hands && data.hands[targetPId] ? data.hands[targetPId] : [];
+  
   const pool = data.discardPool || [];
+  const oDeck = data.openDeck || [];
+  
+  // Revert their draw if they drew but didn't discard
+  if (targetHand.length === 14) {
+      const lastCard = targetHand.pop();
+      oDeck.push(lastCard);
+  }
+  
+  // Muck the remaining hand
   targetHand.forEach(c => pool.push(c));
   
   const startIdx = data.roundStartTurnIndex || 0;
@@ -734,13 +744,20 @@ window.forceFoldPlayer = async function(targetPId) {
   
   const nextTurn = getNextValidTurnIndex(data, data.turnIndex);
   
-  await db.ref(`rooms/${currentRoom}`).update({
+  let updates = {
     [`players/${targetPId}/roundStatus`]: 'dropped',
     [`players/${targetPId}/penaltyScore`]: score,
     [`hands/${targetPId}`]: [],
     discardPool: pool,
+    openDeck: oDeck,
     turnIndex: nextTurn
-  });
+  };
+  
+  if (autoKick) {
+      updates[`players/${targetPId}/hasQuit`] = true;
+  }
+  
+  await db.ref(`rooms/${currentRoom}`).update(updates);
 }
 
 document.getElementById('closed-deck').addEventListener('click', async () => {
