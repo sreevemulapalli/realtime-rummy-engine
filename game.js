@@ -385,11 +385,9 @@ function renderPlayBoard(data) {
   // Auto-skip players who ragequit or disconnected too long!
   const pData = data.players[turnPlayerId];
   if (!pData || pData.hasQuit || pData.isEliminated || (pData.disconnectedAt && (Date.now() - pData.disconnectedAt > 30000))) {
-    if (data.host === myPlayerId) {
-      if (!window.__isFoldingTarget || window.__isFoldingTarget !== turnPlayerId) {
-         window.__isFoldingTarget = turnPlayerId;
-         forceFoldPlayer(turnPlayerId, true).then(() => window.__isFoldingTarget = null);
-      }
+    if (!window.__isFoldingTarget || window.__isFoldingTarget !== turnPlayerId) {
+        window.__isFoldingTarget = turnPlayerId;
+        forceFoldPlayer(turnPlayerId, true).then(() => window.__isFoldingTarget = null);
     }
     return; // Wait for the skip update
   }
@@ -426,10 +424,8 @@ function renderPlayBoard(data) {
       }
     } else {
       indicator.innerHTML = `Waiting for <span style="color:#fff;">${pData.name}</span> to play...`;
-      // Dealer override to kick a player who is afk
-      if (data.host === myPlayerId) {
-        indicator.innerHTML += `<br/><button class="btn-danger btn-outline" style="margin-top: 0.5rem; padding: 0.2rem 0.5rem; font-size:0.8rem; border-color: rgba(255,0,0,0.5);" onclick="forceFoldPlayer('${turnPlayerId}')">Force Fold (Sleeping)</button>`;
-      }
+      // Allow any player to kick someone who is afk
+      indicator.innerHTML += `<br/><button class="btn-danger btn-outline" style="margin-top: 0.5rem; padding: 0.2rem 0.5rem; font-size:0.8rem; border-color: rgba(255,0,0,0.5);" onclick="forceFoldPlayer('${turnPlayerId}')">Force Fold (Sleeping)</button>`;
     }
   }
   
@@ -719,11 +715,6 @@ window.forceFoldPlayer = async function(targetPId, autoKick = false) {
   if (!currentRoom) return;
   const snap = await db.ref(`rooms/${currentRoom}`).get();
   const data = snap.val();
-  
-  if (data.host !== myPlayerId) {
-      if(!autoKick) alert("Only the host can force fold an AFK player.");
-      return;
-  }
   
   if (!autoKick && !confirm(`Are you sure you want to forcefully fold ${data.players[targetPId].name}'s hand? They will immediately take the Drop Penalty.`)) return;
   
