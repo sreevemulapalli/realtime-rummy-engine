@@ -356,27 +356,25 @@ function getNextValidTurnIndex(data, currentIndex) {
 
 function renderPlayBoard(data) {
   // Check Auto-Win if only 1 active player is left
-  if (data.host === myPlayerId) {
-    let activePlayers = [];
-    data.playerOrder.forEach(p => {
-      const pData = data.players[p];
-      if (pData && data.hands && data.hands[p]) {
-        if (!pData.isEliminated && !pData.hasQuit && pData.roundStatus !== 'dropped' && pData.roundStatus !== 'failed') {
-           activePlayers.push(p);
-        }
+  let activePlayers = [];
+  data.playerOrder.forEach(p => {
+    const pData = data.players[p];
+    if (pData && data.hands && data.hands[p]) {
+      if (!pData.isEliminated && !pData.hasQuit && pData.roundStatus !== 'dropped' && pData.roundStatus !== 'failed') {
+         activePlayers.push(p);
       }
-    });
-    
-    const startingPlayers = data.hands ? Object.keys(data.hands).length : 0;
-    
-    if (activePlayers.length === 1 && startingPlayers > 1 && data.status !== 'showdown' && data.status !== 'scoreboard') {
-       db.ref(`rooms/${currentRoom}`).update({
-         status: 'showdown',
-         [`players/${activePlayers[0]}/penaltyScore`]: 0,
-         [`players/${activePlayers[0]}/roundStatus`]: 'winner'
-       });
-       return;
     }
+  });
+  
+  const startingPlayers = data.hands ? Object.keys(data.hands).length : 0;
+  
+  if (activePlayers.length === 1 && startingPlayers > 1 && data.status !== 'showdown' && data.status !== 'scoreboard') {
+     db.ref(`rooms/${currentRoom}`).update({
+       status: 'showdown',
+       [`players/${activePlayers[0]}/penaltyScore`]: 0,
+       [`players/${activePlayers[0]}/roundStatus`]: 'winner'
+     });
+     return;
   }
 
   const pCount = data.playerOrder.length;
