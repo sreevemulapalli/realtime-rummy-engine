@@ -358,13 +358,16 @@ function renderPlayBoard(data) {
   // Check Auto-Win if only 1 active player is left
   if (data.host === myPlayerId) {
     let activePlayers = [];
-    let startingPlayers = 0;
     data.playerOrder.forEach(p => {
-      if (data.players[p]) {
-        if(!data.players[p].isEliminated) startingPlayers++;
-        if(!data.players[p].isEliminated && data.players[p].roundStatus !== 'dropped' && data.players[p].roundStatus !== 'failed') activePlayers.push(p);
+      const pData = data.players[p];
+      if (pData && data.hands && data.hands[p]) {
+        if (!pData.isEliminated && !pData.hasQuit && pData.roundStatus !== 'dropped' && pData.roundStatus !== 'failed') {
+           activePlayers.push(p);
+        }
       }
     });
+    
+    const startingPlayers = data.hands ? Object.keys(data.hands).length : 0;
     
     if (activePlayers.length === 1 && startingPlayers > 1 && data.status !== 'showdown' && data.status !== 'scoreboard') {
        db.ref(`rooms/${currentRoom}`).update({
