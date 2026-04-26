@@ -296,7 +296,7 @@ async function startGame() {
   
   const hands = {};
   playerOrder.forEach(pId => {
-    if (!data.players[pId].isEliminated) {
+    if (!data.players[pId].isEliminated && !data.players[pId].hasQuit) {
       hands[pId] = deck.splice(0, 13);
     }
   });
@@ -311,6 +311,7 @@ async function startGame() {
     playerOrder: playerOrder,
     turnIndex: turnIndex,
     roundStartTurnIndex: turnIndex,
+    roundStartingPlayers: Object.keys(hands).length,
     hands: hands,
     closedDeck: deck,
     openDeck: openDeck,
@@ -366,7 +367,7 @@ function renderPlayBoard(data) {
     }
   });
   
-  const startingPlayers = data.hands ? Object.keys(data.hands).length : 0;
+  const startingPlayers = data.roundStartingPlayers || 0;
   
   if (activePlayers.length === 1 && startingPlayers > 1 && data.status !== 'showdown' && data.status !== 'scoreboard') {
      db.ref(`rooms/${currentRoom}`).update({
