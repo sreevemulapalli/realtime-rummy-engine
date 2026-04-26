@@ -376,6 +376,11 @@ function renderPlayBoard(data) {
      });
      return;
   }
+  
+  if (activePlayers.length === 0 && startingPlayers > 0 && data.status !== 'showdown' && data.status !== 'scoreboard') {
+     db.ref(`rooms/${currentRoom}`).update({ status: 'showdown' });
+     return;
+  }
 
   const pCount = data.playerOrder.length;
   const turnPlayerId = data.playerOrder[data.turnIndex % pCount];
