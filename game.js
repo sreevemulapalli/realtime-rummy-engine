@@ -180,6 +180,8 @@ function renderRoomPlayers(roomData) {
   const players = roomData.players || {};
   Object.keys(players).forEach(pId => {
     const p = players[pId];
+    if (!p.name || p.hasQuit || (roomData && roomData.status === 'waiting' && p.disconnectedAt)) return; // Hide disconnected/quit ghosts in lobby
+    
     const isHost = pId === roomData.host;
     const isMe = pId === myPlayerId;
     
@@ -202,6 +204,7 @@ async function leaveRoom() {
   const code = currentRoom;
   if (code) {
     db.ref(`rooms/${code}`).off(); // Unhook listener
+    await db.ref(`rooms/${code}/players/${myPlayerId}/disconnectedAt`).onDisconnect().cancel();
     try { 
       const snap = await db.ref(`rooms/${code}`).get();
       const data = snap.val();
@@ -296,7 +299,8 @@ async function startGame() {
   
   const hands = {};
   playerOrder.forEach(pId => {
-    if (!data.players[pId].isEliminated && !data.players[pId].hasQuit) {
+    // Exclude eliminated, quit, AND players who disconnected while in the waiting lobby
+    if (!data.players[pId].isEliminated && !data.players[pId].hasQuit && !data.players[pId].disconnectedAt) {
       hands[pId] = deck.splice(0, 13);
     }
   });
