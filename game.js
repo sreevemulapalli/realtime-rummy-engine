@@ -720,7 +720,12 @@ function attachDragEvents() {
     });
     
     // Tap to select logic
-    card.addEventListener('click', (e) => {
+    let lastTap = 0;
+    const handleTap = (e) => {
+      const now = Date.now();
+      if (now - lastTap < 300) return; // Prevent double-fire on devices supporting both touch and mouse
+      lastTap = now;
+
       if (e.target.tagName === 'BUTTON') return;
       if (card.draggable === false) return; // ignore non-interactive cards in showdown
       const cardId = card.getAttribute('data-id');
@@ -736,12 +741,15 @@ function attachDragEvents() {
       
       const actionsHtml = `
          <div id="inline-card-actions" style="position:absolute; inset:0; pointer-events:none;">
-            <button class="btn-success" style="position:absolute; top:-40px; left:50%; transform:translateX(-50%); font-size:0.8rem; padding:0.3rem 0.6rem; pointer-events:auto; white-space:nowrap; z-index:200; box-shadow: 0 4px 6px rgba(0,0,0,0.5);" onclick="discardSelectedCard(event)">Discard</button>
-            <button class="btn-outline" style="position:absolute; bottom:-40px; left:50%; transform:translateX(-50%); font-size:0.8rem; padding:0.3rem 0.6rem; color:#fff; border-color:var(--info); background:rgba(0,0,0,0.9); pointer-events:auto; white-space:nowrap; z-index:200; box-shadow: 0 4px 6px rgba(0,0,0,0.5);" onclick="declareSelectedCard(event)">Declare</button>
+            <button class="btn-success" style="position:absolute; top:-40px; left:50%; transform:translateX(-50%); font-size:0.8rem; padding:0.3rem 0.6rem; pointer-events:auto; white-space:nowrap; z-index:200; box-shadow: 0 4px 6px rgba(0,0,0,0.5);" onclick="discardSelectedCard(event)" ontouchend="discardSelectedCard(event)">Discard</button>
+            <button class="btn-outline" style="position:absolute; bottom:-40px; left:50%; transform:translateX(-50%); font-size:0.8rem; padding:0.3rem 0.6rem; color:#fff; border-color:var(--info); background:rgba(0,0,0,0.9); pointer-events:auto; white-space:nowrap; z-index:200; box-shadow: 0 4px 6px rgba(0,0,0,0.5);" onclick="declareSelectedCard(event)" ontouchend="declareSelectedCard(event)">Declare</button>
          </div>
       `;
       card.insertAdjacentHTML('beforeend', actionsHtml);
-    });
+    };
+
+    card.addEventListener('click', handleTap);
+    card.addEventListener('touchend', handleTap);
     
     // Allow dropping ONTO another card for exact reordering inside a group!
     card.addEventListener('dragover', e => e.preventDefault());
