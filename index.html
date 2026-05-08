@@ -15,15 +15,19 @@
 </head>
 <body>
   <div class="app-container">
-    <header>
+    <header style="position: relative;">
       <h1>🃏 Realtime Rummy</h1>
       <p class="subtitle" id="connection-status">Connecting to Lobby...</p>
+      <button id="global-quit-btn" class="btn-danger btn-outline hidden" style="position: absolute; top: 0; right: 0; padding: 0.25rem 0.5rem; font-size: 0.8rem; border: none; opacity: 0.8;" onclick="leaveRoom()">Leave Game</button>
     </header>
 
     <main>
       <!-- Lobby / Room Selection -->
       <section id="lobby-section" class="glass-panel">
-        <h2>Multiplayer Lobby</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0;">Multiplayer Lobby</h2>
+          <button class="btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;" onclick="changeName()">✏️ Edit Name</button>
+        </div>
         <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
           <button id="btn-create-room" class="btn-primary full-width">Create New Room</button>
         </div>
@@ -65,6 +69,11 @@
         <!-- The Table Center -->
         <div id="table-center" style="display:flex; justify-content:center; align-items:center; gap: 2rem; margin-bottom: 3rem;">
           
+          <!-- Finish Slot for Declaring Rummy -->
+          <div id="finish-slot" class="dropzone" style="width: 80px; height: 120px; background: rgba(56,189,248,0.1); border-radius: 8px; border: 2px dashed var(--primary); display:flex; align-items:center; justify-content:center; color: var(--primary); font-weight: bold; text-align:center; padding:0.5rem; box-shadow: 0 0 10px rgba(56,189,248,0.1); line-height:1.2; font-size:0.9rem;">
+            Drop to<br/>Declare
+          </div>
+
           <!-- Wild Joker Display -->
           <div style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; opacity: 0.8;">
             <div style="font-size:0.75rem; color:var(--warning); text-transform:uppercase; letter-spacing:1px; font-weight:bold;">Wild Joker</div>
@@ -91,12 +100,6 @@
             <div style="font-size:0.8rem; color:var(--primary); cursor:pointer; font-weight:bold; background:rgba(255,255,255,0.05); padding: 0.2rem 0.5rem; border-radius:4px;" onclick="viewDiscardPile()">🔍 View Pile</div>
           </div>
           
-
-          <!-- Finish Slot for Declaring Rummy -->
-          <div id="finish-slot" class="dropzone" style="width: 80px; height: 120px; background: rgba(56,189,248,0.1); border-radius: 8px; border: 2px dashed var(--primary); display:flex; align-items:center; justify-content:center; color: var(--primary); font-weight: bold; text-align:center; padding:0.5rem; box-shadow: 0 0 10px rgba(56,189,248,0.1); line-height:1.2; font-size:0.9rem;">
-            Drop to<br/>Declare
-          </div>
-          
         </div>
 
         <div style="text-align:center; margin-bottom:1rem; min-height:1.5rem; color:var(--warning); font-weight:bold;" id="turn-indicator">
@@ -109,7 +112,7 @@
             <h3 style="color: var(--primary); margin:0;">Your Hand</h3>
             <div id="hand-action-buttons" style="display:flex; gap: 0.5rem;">
               <button class="btn-danger btn-outline" style="padding:0.25rem 0.5rem; border: none; opacity:0.8;" id="btn-drop">Fold Hand</button>
-              <button class="btn-outline" style="padding:0.25rem 0.5rem;" onclick="addGroup()">+ Group</button>
+              <button class="btn-outline" style="padding:0.25rem 0.5rem;" onclick="addGroup()" id="btn-add-group">+ Group</button>
             </div>
           </div>
           

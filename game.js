@@ -23,6 +23,17 @@ if (!myPlayerId) {
 
 let myPlayerName = localStorage.getItem('multi_playerName');
 
+window.changeName = function() {
+  const newName = prompt("Enter your new display name:", myPlayerName);
+  if (newName && newName.trim() !== "") {
+    myPlayerName = newName.trim();
+    localStorage.setItem('multi_playerName', myPlayerName);
+    if (!currentRoom) {
+      document.getElementById('connection-status').textContent = `Hello, ${myPlayerName}. Connected to servers 🟢`;
+    }
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   if (!myPlayerName) {
     do {
@@ -109,6 +120,7 @@ function enterRoom(code) {
   gameSec.classList.remove('hidden');
   document.getElementById('room-code-display').textContent = `Room: ${code}`;
   statusEl.textContent = `In Room ${code} 🟢`;
+  document.getElementById('global-quit-btn').classList.remove('hidden');
   
   db.ref(`rooms/${code}/players/${myPlayerId}/disconnectedAt`).onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
   
@@ -224,6 +236,7 @@ async function leaveRoom() {
   gameSec.classList.add('hidden');
   document.getElementById('play-board-section').classList.add('hidden');
   statusEl.textContent = `Hello, ${myPlayerName}. Connected to servers 🟢`;
+  document.getElementById('global-quit-btn').classList.add('hidden');
 }
 
 /* --- GAME ENGINE --- */
@@ -231,17 +244,17 @@ async function leaveRoom() {
 const suits = ['♠', '♥', '♦', '♣'];
 const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 
-function generateDeck() {
+function generateDeck(numDecks = 2) {
   let deck = [];
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < numDecks; i++) {
     for (let s of suits) {
       for (let v of values) {
         deck.push({ suit: s, value: v, id: Math.random().toString(36).substr(2, 9) });
       }
     }
+    // 1 Printed Joker per deck
+    deck.push({ suit: '🃏', value: 'JOKER', id: Math.random().toString(36).substr(2, 9) });
   }
-  deck.push({ suit: '🃏', value: 'JOKER', id: Math.random().toString(36).substr(2, 9) });
-  deck.push({ suit: '🃏', value: 'JOKER', id: Math.random().toString(36).substr(2, 9) });
   
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -267,6 +280,8 @@ window.addEventListener('load', async () => {
            
            // Rehook onDisconnect
            db.ref(`rooms/${currentRoom}/players/${myPlayerId}/disconnectedAt`).onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+           
+           document.getElementById('global-quit-btn').classList.remove('hidden');
            
            // Rehook room listener
            db.ref(`rooms/${currentRoom}`).on('value', (s) => {
@@ -294,7 +309,16 @@ async function startGame() {
   let activeOrder = playerOrder.filter(id => !data.players[id].isEliminated);
   if(activeOrder.length === 0) activeOrder = playerOrder; // Start of game
   
-  const deck = generateDeck();
+  const activePlayersList = playerOrder.filter(pId => !data.players[pId].isEliminated && !data.players[pId].hasQuit && !data.players[pId].disconnectedAt);
+  if (activePlayersList.length < 2) {
+    alert("Not enough active players to start a round! Please wait for players to join or end the game.");
+    return;
+  }
+  
+  // Dynamic Deck Sizing: 1 deck per 3 players, min 2 decks.
+  const numDecks = Math.max(2, Math.ceil(activePlayersList.length / 3));
+  const deck = generateDeck(numDecks);
+  const numJokers = numDecks; // 1 joker per deck
   
   const hands = {};
   playerOrder.forEach(pId => {
@@ -303,11 +327,6 @@ async function startGame() {
       hands[pId] = deck.splice(0, 13);
     }
   });
-  
-  if (Object.keys(hands).length < 2) {
-    alert("Not enough active players to start a round! Please wait for players to join or end the game.");
-    return;
-  }
   
   const openDeck = [deck.pop()];
   const wildJoker = deck.pop();
@@ -320,6 +339,7 @@ async function startGame() {
     turnIndex: turnIndex,
     roundStartTurnIndex: turnIndex,
     roundStartingPlayers: Object.keys(hands).length,
+    deckConfig: { decks: numDecks, jokers: numJokers },
     hands: hands,
     closedDeck: deck,
     openDeck: openDeck,
@@ -541,7 +561,13 @@ function renderPlayBoard(data) {
         else if (p.totalScore >= 250) statusStr = '💀';
         miniHtml += `<td style="padding: 0.5rem; color: ${isOut ? 'var(--danger)' : '#fff'};">${p.totalScore || 0} ${statusStr}</td>`;
     });
-    miniHtml += `</tr></tbody></table></div>`;
+    miniHtml += `</tr></tbody></table>`;
+    
+    if (data.deckConfig) {
+       miniHtml += `<div style="text-align:center; font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem; letter-spacing: 0.5px;">Deck Config: ${data.deckConfig.decks} Decks (${data.deckConfig.decks * 52} Cards) | ${data.deckConfig.jokers} Printed Jokers</div>`;
+    }
+    
+    miniHtml += `</div>`;
     miniBoard.innerHTML = miniHtml;
   }
 }
@@ -581,8 +607,18 @@ function renderMyHand(cards) {
   });
   if (localGroups.size === 0) localGroups.add("0");
   
+  const btnAdd = document.getElementById('btn-add-group');
+  if (btnAdd) {
+      btnAdd.disabled = localGroups.size >= 4;
+      btnAdd.style.opacity = localGroups.size >= 4 ? '0.5' : '1';
+      btnAdd.style.cursor = localGroups.size >= 4 ? 'not-allowed' : 'pointer';
+  }
+
   localGroups.forEach(gId => {
-    meldGroups.innerHTML += `<div class="meld-group dropzone" data-group="${gId}" style="min-width: 120px; min-height: 120px; background: rgba(255,255,255,0.05); border: 2px dashed rgba(255,255,255,0.2); border-radius: 8px; padding: 0.5rem; padding-right: 40px; display: flex; flex-direction: row; flex-wrap: nowrap; overflow: visible;"></div>`;
+    const isOnlyGroup = localGroups.size === 1;
+    const removeBtnHtml = isOnlyGroup ? '' : `<button onclick="removeGroup('${gId}')" style="position:absolute; top: -10px; right: -10px; background: var(--danger); border: none; color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10;">&times;</button>`;
+    
+    meldGroups.innerHTML += `<div class="meld-group dropzone" data-group="${gId}" style="position: relative; min-width: 120px; min-height: 120px; background: rgba(255,255,255,0.05); border: 2px dashed rgba(255,255,255,0.2); border-radius: 8px; padding: 0.5rem; padding-right: 40px; display: flex; flex-direction: row; flex-wrap: nowrap; overflow: visible;">${removeBtnHtml}</div>`;
   });
   
   cards.forEach(card => {
@@ -594,9 +630,44 @@ function renderMyHand(cards) {
 }
 
 window.addGroup = function() {
+  if (localGroups.size >= 4) return;
   const newId = Math.random().toString(36).substring(2, 7);
   localGroups.add(newId);
-  renderMyHand(currentHandData);
+  refreshHandUI();
+}
+
+window.removeGroup = function(groupId) {
+  if (localGroups.size <= 1) return;
+  let fallbackId = null;
+  for (let id of localGroups) {
+    if (id !== groupId) { fallbackId = id; break; }
+  }
+  
+  let moved = false;
+  currentHandData.forEach(c => {
+    if (c.groupId === groupId) {
+      c.groupId = fallbackId;
+      moved = true;
+    }
+  });
+  
+  localGroups.delete(groupId);
+  if (moved) {
+    db.ref(`rooms/${currentRoom}/hands/${myPlayerId}`).set(currentHandData);
+  } else {
+    refreshHandUI();
+  }
+}
+
+function refreshHandUI() {
+  db.ref(`rooms/${currentRoom}`).once('value').then(s => {
+    const data = s.val();
+    if (data && data.status === 'showdown') {
+      renderShowdown(data);
+    } else {
+      renderMyHand(currentHandData);
+    }
+  });
 }
 
 function attachDragEvents() {
@@ -1062,7 +1133,7 @@ function renderShowdown(data) {
       const currentClaim = data.claimedScores && data.claimedScores[pId] !== undefined ? data.claimedScores[pId] : '';
       content = `
         <div style="display:flex; align-items:center; gap: 1rem;">
-          ${ pId === myPlayerId ? `<button class="btn-outline" style="padding:0.25rem 0.5rem;" onclick="addGroup()">+ Group</button>` : ''}
+          ${ pId === myPlayerId ? `<button class="btn-outline" style="padding:0.25rem 0.5rem; ${localGroups.size >= 4 ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="addGroup()" ${localGroups.size >= 4 ? 'disabled' : ''}>+ Group</button>` : ''}
           <input type="number" min="0" max="80" placeholder="Score" id="claim-${pId}" value="${currentClaim}" style="width: 80px; text-align:center; padding: 0.5rem; font-size: 1.2rem; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.2); color:white; border-radius:4px;">
           <button class="btn-outline" onclick="updateClaim('${pId}')" style="padding:0.5rem;">Update Override</button>
         </div>
@@ -1087,7 +1158,11 @@ function renderShowdown(data) {
     
     Object.keys(groupsObj).forEach(gId => {
        const isMe = (pId === myPlayerId);
-       handHtml += `<div class="${isMe ? 'meld-group dropzone' : ''}" data-group="${gId}" style="display:flex; background: rgba(255,255,255,0.05); border: 2px dashed rgba(255,255,255,0.2); border-radius: 8px; padding: 0.5rem; padding-right: 40px; min-width:80px; min-height:100px;">`;
+       let removeBtnHtml = '';
+       if (isMe && Object.keys(groupsObj).length > 1) {
+          removeBtnHtml = `<button onclick="removeGroup('${gId}')" style="position:absolute; top: -10px; right: -10px; background: var(--danger); border: none; color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10;">&times;</button>`;
+       }
+       handHtml += `<div class="${isMe ? 'meld-group dropzone' : ''}" data-group="${gId}" style="position: relative; display:flex; background: rgba(255,255,255,0.05); border: 2px dashed rgba(255,255,255,0.2); border-radius: 8px; padding: 0.5rem; padding-right: 40px; min-width:80px; min-height:100px;">${removeBtnHtml}`;
        groupsObj[gId].forEach(card => {
          handHtml += renderCardHTML(card);
        });
