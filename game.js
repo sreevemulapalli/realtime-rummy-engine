@@ -46,7 +46,6 @@ document.getElementById('btn-vote-valid').addEventListener('click', () => submit
 document.getElementById('btn-vote-invalid').addEventListener('click', () => submitVote('invalid'));
 document.getElementById('btn-drop').addEventListener('click', dropHand);
 document.getElementById('btn-finalize-scores').addEventListener('click', finalizeScores);
-document.getElementById('btn-next-round').addEventListener('click', startGame);
 
 // Connection test
 db.ref(".info/connected").on('value', (snap) => {
@@ -305,6 +304,11 @@ async function startGame() {
     }
   });
   
+  if (Object.keys(hands).length < 2) {
+    alert("Not enough active players to start a round! Please wait for players to join or end the game.");
+    return;
+  }
+  
   const openDeck = [deck.pop()];
   const wildJoker = deck.pop();
   
@@ -373,7 +377,7 @@ function renderPlayBoard(data) {
   
   const startingPlayers = data.roundStartingPlayers || 0;
   
-  if (activePlayers.length === 1 && startingPlayers > 1 && data.status !== 'showdown' && data.status !== 'scoreboard') {
+  if (activePlayers.length === 1 && data.status !== 'showdown' && data.status !== 'scoreboard') {
      db.ref(`rooms/${currentRoom}`).update({
        status: 'showdown',
        [`players/${activePlayers[0]}/penaltyScore`]: 0,
@@ -382,7 +386,7 @@ function renderPlayBoard(data) {
      return;
   }
   
-  if (activePlayers.length === 0 && startingPlayers > 0 && data.status !== 'showdown' && data.status !== 'scoreboard') {
+  if (activePlayers.length === 0 && data.status !== 'showdown' && data.status !== 'scoreboard') {
      db.ref(`rooms/${currentRoom}`).update({ status: 'showdown' });
      return;
   }
@@ -979,13 +983,13 @@ function renderVoting(data) {
     let totalVoters = 0;
     Object.keys(data.players).forEach(pId => {
       const p = data.players[pId];
-      if (pId !== data.declaredBy && p.roundStatus !== 'failed' && p.roundStatus !== 'dropped' && !p.isEliminated) {
+      if (pId !== data.declaredBy && p.roundStatus !== 'failed' && p.roundStatus !== 'dropped' && !p.isEliminated && !p.hasQuit && !p.disconnectedAt) {
         totalVoters++;
       }
     });
     
-    if ((valid + invalid) >= totalVoters && totalVoters > 0) {
-      if (valid >= invalid) {
+    if ((valid + invalid) >= totalVoters) {
+      if (valid >= invalid || totalVoters === 0) {
         // Round ends: Valid! 
         setTimeout(async () => {
           await db.ref(`rooms/${currentRoom}`).update({ 
@@ -1225,12 +1229,18 @@ function renderScoreboard(data) {
   const nextBtn = document.getElementById('btn-next-round');
   if (data.host === myPlayerId) {
     let activeCt = 0;
-    data.playerOrder.forEach(pId => { if (data.players[pId] && !data.players[pId].isEliminated) activeCt++; });
+    data.playerOrder.forEach(pId => { 
+        const p = data.players[pId];
+        if (p && !p.isEliminated && !p.hasQuit && !p.disconnectedAt) activeCt++; 
+    });
     
     nextBtn.classList.remove('hidden');
     if (activeCt <= 1) {
-       nextBtn.textContent = "🏆 End Game (Winner Declared)";
-       nextBtn.onclick = () => alert("Game is fully over!");
+       nextBtn.textContent = "🏆 End Game (Not Enough Players)";
+       nextBtn.onclick = () => {
+         alert("Game is fully over due to lack of players! Returning to lobby.");
+         leaveRoom();
+       };
     } else {
        nextBtn.textContent = "Deal Next Round";
        nextBtn.onclick = startGame;
