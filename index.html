@@ -11,6 +11,10 @@
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-database-compat.js"></script>
   
+  <!-- Mobile Drag & Drop Polyfill -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
+  <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js"></script>
+  
   <script src="game.js" defer></script>
 </head>
 <body>
@@ -67,7 +71,7 @@
         </div>
         
         <!-- The Table Center -->
-        <div id="table-center" style="display:flex; justify-content:center; align-items:center; gap: 2rem; margin-bottom: 3rem;">
+        <div id="table-center" style="display:flex; justify-content:center; align-items:center; gap: 2rem; margin-bottom: 3rem; flex-wrap: wrap;">
           
           <!-- Finish Slot for Declaring Rummy -->
           <div id="finish-slot" class="dropzone" style="width: 80px; height: 120px; background: rgba(56,189,248,0.1); border-radius: 8px; border: 2px dashed var(--primary); display:flex; align-items:center; justify-content:center; color: var(--primary); font-weight: bold; text-align:center; padding:0.5rem; box-shadow: 0 0 10px rgba(56,189,248,0.1); line-height:1.2; font-size:0.9rem;">
@@ -108,15 +112,18 @@
 
         <!-- Player Hand Area -->
         <div id="my-hand-area" style="background: rgba(0,0,0,0.3); border-radius: 12px; padding: 1rem; min-height: 200px; border: 1px solid var(--panel-border);">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; align-items:center;">
-            <h3 style="color: var(--primary); margin:0;">Your Hand</h3>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; align-items:center; flex-wrap: wrap; gap: 1rem;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <h3 style="color: var(--primary); margin:0;">Your Hand</h3>
+                <!-- Contextual Card Actions moved to inline -->
+            </div>
             <div id="hand-action-buttons" style="display:flex; gap: 0.5rem;">
               <button class="btn-danger btn-outline" style="padding:0.25rem 0.5rem; border: none; opacity:0.8;" id="btn-drop">Fold Hand</button>
               <button class="btn-outline" style="padding:0.25rem 0.5rem;" onclick="addGroup()" id="btn-add-group">+ Group</button>
             </div>
           </div>
           
-          <div id="meld-groups" style="display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem;">
+          <div id="meld-groups" style="display: flex; flex-wrap: wrap; gap: 1rem; padding-top: 3rem; padding-bottom: 3rem; justify-content: center;">
             <!-- Groups will render here dynamically -->
           </div>
         </div>

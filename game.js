@@ -264,6 +264,15 @@ function generateDeck(numDecks = 2) {
 }
 
 window.addEventListener('load', async () => {
+   // Initialize Mobile Drag Drop Polyfill if available
+   if (typeof MobileDragDrop !== 'undefined') {
+       MobileDragDrop.polyfill({
+           holdToDrag: 150 // 150ms long press to drag
+       });
+       // Optional: force passive event listeners for touchmove
+       window.addEventListener('touchmove', function() {}, {passive: false});
+   }
+
    if (currentRoom && myPlayerId) {
        document.getElementById('connection-status').textContent = "Reconnecting to Session...";
        const snap = await db.ref(`rooms/${currentRoom}`).get();
@@ -670,17 +679,68 @@ function refreshHandUI() {
   });
 }
 
+let globallySelectedCardId = null;
+
+window.discardSelectedCard = async function(e) {
+  if (e) e.stopPropagation();
+  if (!globallySelectedCardId) return;
+  await discardCard(globallySelectedCardId);
+  clearSelection();
+}
+
+window.declareSelectedCard = async function(e) {
+  if (e) e.stopPropagation();
+  if (!globallySelectedCardId) return;
+  await declareRummyByDrop(globallySelectedCardId);
+  clearSelection();
+}
+
+function clearSelection() {
+  globallySelectedCardId = null;
+  document.querySelectorAll('.playing-card').forEach(c => {
+      c.classList.remove('selected-card');
+      const inlineActions = c.querySelector('#inline-card-actions');
+      if (inlineActions) inlineActions.remove();
+  });
+}
+
 function attachDragEvents() {
+  clearSelection();
   const cards = document.querySelectorAll('.playing-card');
   const dropzones = document.querySelectorAll('.meld-group.dropzone');
   
   cards.forEach(card => {
     card.addEventListener('dragstart', (e) => {
+      clearSelection();
       e.dataTransfer.setData('text/plain', card.getAttribute('data-id'));
       card.style.opacity = '0.5';
     });
     card.addEventListener('dragend', (e) => {
       card.style.opacity = '1';
+    });
+    
+    // Tap to select logic
+    card.addEventListener('click', (e) => {
+      if (e.target.tagName === 'BUTTON') return;
+      if (card.draggable === false) return; // ignore non-interactive cards in showdown
+      const cardId = card.getAttribute('data-id');
+      
+      if (globallySelectedCardId === cardId) {
+         clearSelection();
+         return;
+      }
+      
+      clearSelection();
+      globallySelectedCardId = cardId;
+      card.classList.add('selected-card');
+      
+      const actionsHtml = `
+         <div id="inline-card-actions" style="position:absolute; inset:0; pointer-events:none;">
+            <button class="btn-success" style="position:absolute; top:-40px; left:50%; transform:translateX(-50%); font-size:0.8rem; padding:0.3rem 0.6rem; pointer-events:auto; white-space:nowrap; z-index:200; box-shadow: 0 4px 6px rgba(0,0,0,0.5);" onclick="discardSelectedCard(event)">Discard</button>
+            <button class="btn-outline" style="position:absolute; bottom:-40px; left:50%; transform:translateX(-50%); font-size:0.8rem; padding:0.3rem 0.6rem; color:#fff; border-color:var(--info); background:rgba(0,0,0,0.9); pointer-events:auto; white-space:nowrap; z-index:200; box-shadow: 0 4px 6px rgba(0,0,0,0.5);" onclick="declareSelectedCard(event)">Declare</button>
+         </div>
+      `;
+      card.insertAdjacentHTML('beforeend', actionsHtml);
     });
     
     // Allow dropping ONTO another card for exact reordering inside a group!

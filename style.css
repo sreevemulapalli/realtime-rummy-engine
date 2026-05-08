@@ -311,3 +311,32 @@ tfoot th {
   background: var(--out-color);
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
+
+/* Selected Card Style */
+.selected-card {
+  transform: translateY(-15px) scale(1.05);
+  box-shadow: 0 10px 20px rgba(139, 92, 246, 0.5) !important;
+  z-index: 100;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 600px) {
+  .app-container {
+    gap: 1rem;
+  }
+  #table-center > div {
+    transform: scale(0.85);
+    margin: -5px; /* compress the gap artificially */
+  }
+  .playing-card {
+    transform-origin: top left;
+  }
+  /* Prevent accidental text selection while dragging on mobile */
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  h1 {
+    font-size: 2rem !important;
+  }
+}
