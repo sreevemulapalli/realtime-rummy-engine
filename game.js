@@ -97,14 +97,48 @@ async function joinRoom() {
     const roomRef = db.ref(`rooms/${code}`);
     const snap = await roomRef.get();
     
-    if (snap.exists() && snap.val().status === 'waiting') {
-      await db.ref(`rooms/${code}/players/${myPlayerId}`).set({
-        name: myPlayerName
-      });
-      enterRoom(code);
-      roomCodeInput.value = '';
+    if (snap.exists()) {
+      const data = snap.val();
+      
+      // 1. Check if name matches an existing disconnected/quit player
+      let existingPlayerId = null;
+      if (data.players) {
+         for (let pId in data.players) {
+             if (data.players[pId].name.toLowerCase() === myPlayerName.toLowerCase()) {
+                 existingPlayerId = pId;
+                 break;
+             }
+         }
+      }
+      
+      if (existingPlayerId) {
+          // Hijack their session!
+          myPlayerId = existingPlayerId;
+          localStorage.setItem('rummy_playerId', myPlayerId);
+          
+          // Remove disconnected mark
+          await db.ref(`rooms/${code}/players/${myPlayerId}`).update({
+             disconnectedAt: null,
+             hasQuit: null
+          });
+          
+          enterRoom(code);
+          roomCodeInput.value = '';
+          return;
+      }
+      
+      // 2. If not hijacking, can only join if waiting
+      if (data.status === 'waiting') {
+        await db.ref(`rooms/${code}/players/${myPlayerId}`).set({
+          name: myPlayerName
+        });
+        enterRoom(code);
+        roomCodeInput.value = '';
+      } else {
+        alert("Game already started. You can only rejoin if you use the exact same name as your disconnected player.");
+      }
     } else {
-      alert("Room not found or game already started.");
+        alert("Room not found.");
     }
   } catch (e) {
     alert("Database Error: " + e.message);
@@ -151,8 +185,7 @@ function renderRoomState(data) {
          
          if (newHost === myPlayerId) {
             db.ref(`rooms/${currentRoom}`).update({ 
-               host: myPlayerId,
-               [`players/${data.host}/hasQuit`]: true
+               host: myPlayerId
             });
             return; // Halt and wait for my promotion sync
          }
@@ -331,8 +364,11 @@ async function startGame() {
   
   const hands = {};
   playerOrder.forEach(pId => {
-    // Exclude eliminated, quit, AND players who disconnected while in the waiting lobby
-    if (!data.players[pId].isEliminated && !data.players[pId].hasQuit && !data.players[pId].disconnectedAt) {
+    const p = data.players[pId];
+    // Exclude eliminated, quit
+    if (!p.isEliminated && !p.hasQuit) {
+      // Exclude ghosts who disconnected in the initial waiting lobby and never actually played
+      if (data.status === 'waiting' && p.disconnectedAt) return;
       hands[pId] = deck.splice(0, 13);
     }
   });
@@ -428,7 +464,7 @@ function renderPlayBoard(data) {
   if (!pData || pData.hasQuit || pData.isEliminated || (pData.disconnectedAt && (Date.now() - pData.disconnectedAt > 30000))) {
     if (!window.__isFoldingTarget || window.__isFoldingTarget !== turnPlayerId) {
         window.__isFoldingTarget = turnPlayerId;
-        forceFoldPlayer(turnPlayerId, true).then(() => window.__isFoldingTarget = null);
+        forceFoldPlayer(turnPlayerId, false).then(() => window.__isFoldingTarget = null);
     }
     return; // Wait for the skip update
   }
